@@ -3,7 +3,8 @@ import io
 import re
 from PIL import Image
 from transformers import VisionEncoderDecoderModel, DonutProcessor
-from app.utils.transform import str_to_int, extract_int
+from app.utils.transform import str_to_int, extract_int, parse_item_string_fallback
+from app.schemas.response import QCapItem
 
 processor = DonutProcessor.from_pretrained(
     "naver-clova-ix/donut-base-finetuned-cord-v2")
@@ -11,7 +12,7 @@ model = VisionEncoderDecoderModel.from_pretrained(
     "naver-clova-ix/donut-base-finetuned-cord-v2")
 
 
-def postprocess_qcap(qcap_out: dict):
+def postprocess_qcap(qcap_out: dict) -> dict :
     """
     Konversi output mentah dari QCap menjadi struktur baku untuk klasifikasi QRep.
 
@@ -19,28 +20,75 @@ def postprocess_qcap(qcap_out: dict):
         qcap_out (dict): Output mentah dari QCap.
 
     Returns:
-        Tuple[pd.DataFrame, dict]: DataFrame menu dan metadata transaksi.
+        dict: Hasil ekstraksi dalam format dictionary yang cocok dengan QCapResponse.
     """
     menu_raw = qcap_out.get("menu", [])
-    df = pd.DataFrame(menu_raw)
 
-    df.rename(columns=lambda x: x.strip().lower(), inplace=True)
-    df.rename(columns={"nm": "item", "cnt": "qty"}, inplace=True)
+    
+    if isinstance(menu_raw, dict):
+        print(f"Info: Donut 'menu' output berupa sebuah dictionary. Masukkan didalam list untuk diolah. Value: {menu_raw}")
+        menu_raw = [menu_raw] 
+    elif isinstance(menu_raw, str):
+        if menu_raw.strip(): 
+            print(f"Info: Donut 'menu' output berupa sebuah string. Masukkan didalam list untuk diolah pakai fallback. Value: {menu_raw}")
+            menu_raw = [menu_raw] 
+        else:
+            menu_raw = [] 
+    elif not isinstance(menu_raw, list):
+        print(f"Warning: Donut 'menu' output bukan list, dictionary atau string. Tipe Datanya: {type(menu_raw)}, Value: {menu_raw}. Ubah ke list kosong!.")
+        menu_raw = []
+    
+    
+    processed_menu_items = []
+    for item_data in menu_raw:
+        # Data yang dictionary
+        if isinstance(item_data, dict):
+            kuantitas_val = item_data.get("cnt", 0)
+            harga_val = item_data.get("price", 0)
+            processed_menu_items.append(QCapItem( 
+                nama=item_data.get("nm", ""),
+                kuantitas=int(kuantitas_val) if isinstance(kuantitas_val, int) else extract_int(str(kuantitas_val)),
+                harga=int(harga_val) if isinstance(harga_val, int) else str_to_int(str(harga_val)) 
+            ).model_dump())
+        # Data yang string (biasanya kalau cuman 1 item saja)
+        elif isinstance(item_data, str):
+            parsed_item = parse_item_string_fallback(item_data) 
+            processed_menu_items.append(QCapItem(**parsed_item).model_dump()) 
+        else:
+            print(f"Warning: Skip,karena tidak sesuai tipe datanya. Tipe Datanya : {type(item_data)}, Value: {item_data}")
+            continue
+        
+    toko_val = qcap_out.get("merchant", "")
+    tanggal_val = qcap_out.get("date", "")
 
-    # Konversi qty dan price ke int
-    df['qty'] = df['qty'].apply(lambda x: int(
-        x) if isinstance(x, int) else extract_int(str(x)))
-    df['price'] = df['price'].apply(lambda x: int(
-        x) if isinstance(x, int) else str_to_int(str(x)))
+    donut_sub_total_dict = qcap_out.get("sub_total", {}) 
 
-    metadata = {
-        "merchant_name": qcap_out.get("merchant", ""),
-        "date": qcap_out.get("date", ""),
-        "total_amount": str_to_int(qcap_out.get("total", {}).get("total_price", 0)),
-        "payment_method": qcap_out.get("pembayaran", "")
+    
+    sub_total_raw = donut_sub_total_dict.get("subtotal_price", "0") 
+    pajak_raw = donut_sub_total_dict.get("tax_price", "0")       
+    dll_raw = qcap_out.get("etc", "0") 
+
+    total_harga_raw = qcap_out.get("total", {}).get("total_price", "0")
+    total_harga_int = str_to_int(str(total_harga_raw))
+    sub_total_int = str_to_int(str(sub_total_raw)) 
+    pajak_int = str_to_int(str(pajak_raw))        
+    dll_int = str_to_int(str(dll_raw)) 
+
+    total_harga_dict_for_pydantic = {"total_price": total_harga_int}
+
+    
+    final_response_dict = {
+        "toko": toko_val,
+        "tanggal": tanggal_val,
+        "item": processed_menu_items, 
+        "total_harga": total_harga_dict_for_pydantic,
+        "sub_total": sub_total_int,
+        "pajak": pajak_int,
+        "dll": dll_int,
     }
 
-    return df, metadata
+
+    return final_response_dict
 
 
 def process_qcap(image_bytes: bytes) -> dict:

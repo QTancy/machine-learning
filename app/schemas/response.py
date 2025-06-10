@@ -5,33 +5,33 @@ from typing import List
 # ------------------ QCAP ------------------
 
 class QCapItem(BaseModel):
-    nm: str
-    cnt: int
-    price: int
+    nama: str
+    kuantitas: int
+    harga: int
 
 
 class QCapResponse(BaseModel):
-    merchant: str
-    date: str
-    menu: List[QCapItem]
-    total: dict
+    toko: str
+    tanggal: str
+    item: List[QCapItem]
+    total_harga: dict
     sub_total: int
-    tax_price: int
-    etc: int
+    pajak: int
+    dll: int
 
 
 # ------------------ QREP REPORT ------------------
 
 class QRepReportItem(BaseModel):
     item: str
-    qty: int
-    price: int
+    kuantitas: int
+    harga: int
 
 
 class QRepReportResponse(BaseModel):
-    merchant_name: str
-    date: str
-    total_amount: int
+    toko: str
+    tanggal: str
+    total_harga: int
     item_list: List[QRepReportItem]
-    payment_method: str
-    report_period: str
+    metode_pembayaran: str
+    periode_laporan: str

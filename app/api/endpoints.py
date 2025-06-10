@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File
 from app.schemas.response import QCapResponse, QRepReportResponse
-from app.services.qcap import process_qcap
+from app.services.qcap import process_qcap, postprocess_qcap
 from app.services.qrep import classify_qrep
 
 router = APIRouter()
@@ -12,10 +12,12 @@ router = APIRouter()
 async def qcap_upload(file: UploadFile = File(...)):
     """
     Menerima gambar struk via multipart/form-data, lalu melakukan OCR + NER.
-    Return hasil ekstraksi merchant, date, items, total.
+    Return hasil ekstraksi toko, tanggal, item, total_harga.
     """
     image_bytes = await file.read()
-    return process_qcap(image_bytes)
+    raw_qcap_output = process_qcap(image_bytes)
+    final_qcap_response = postprocess_qcap(raw_qcap_output)
+    return final_qcap_response
 
 
 # ------------------ QREP: Classify (from QCap output) ------------------

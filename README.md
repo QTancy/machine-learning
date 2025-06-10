@@ -1,6 +1,22 @@
-Instalasi
+Python yang digunakan versi 3.11.7
 
+## Bisa jalankan line berikut untuk install library
 ```
-docker build -t qtancy-api .
-docker run -d -p 8000:8000 --name qtancy qtancy-api
+pip install -r requirements.txt
 ```
+
+## Ini semua library yang aku install secara manual
+```
+pip install python-multipart
+pip install scikit-learn
+pip install joblib
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+pip install tensorflow sentencepiece
+pip install protobuf
+```
+
+## Bisa jalankan local server dengan perintah berikut ini
+```
+uvicorn app.main:app --reload
+```
+

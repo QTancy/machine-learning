@@ -12,13 +12,19 @@ def str_to_int(s, locale="US"):
     Returns:
         int: Nilai bilangan bulat, desimal akan dibuang
     """
-    s = s.strip()
+    s = str(s).strip()
+    
+    # Kalau string kosong, kasi nilai default 0
+    if not s: 
+        return 0 
 
     if locale.upper() == "US":
         # Hapus koma (,) lalu pisahkan dari desimal jika ada
+        # Contoh: "1,591,600.00" -> "1591600.00" -> "1591600"
         s_clean = re.sub(r",", "", s).split(".")[0]
     elif locale.upper() == "ID":
         # Hapus titik (.) lalu pisahkan dari desimal jika ada
+        # Contoh: "1.591.600,00" -> "1591600,00" -> "1591600"
         s_clean = re.sub(r"\.", "", s).split(",")[0]
     else:
         raise ValueError("locale must be either 'US' or 'ID'")
@@ -38,3 +44,42 @@ def extract_int(s):
     """
     match = re.search(r"\d+", s)
     return int(match.group()) if match else 0
+
+
+def parse_item_string_fallback(item_string: str, locale="ID"):
+    """
+    Mencoba mengurai string item tunggal
+    menjadi nama, kuantitas, dan harga, ketika Donut gagal memberikan dictionary terstruktur.
+    """
+    nama = item_string.strip()
+    # Nilai Default 
+    kuantitas = 1  
+    harga = 0      
+
+    
+    numeric_parts = re.findall(r'(\d[\d.,]*\d|\d+)', item_string)
+    
+    if numeric_parts:
+        try:
+            harga_str = numeric_parts[-1]
+            harga = str_to_int(harga_str, locale=locale)
+            temp_string = item_string.rsplit(harga_str, 1)[0].strip()
+            
+           
+            qty_match = re.search(r'^(\d+)\s*([xX@]?\s*[\d.,]*[\d]?\s*)?', temp_string)
+            if qty_match:
+                kuantitas = int(qty_match.group(1))
+                
+                nama = re.sub(r'^(\d+)\s*([xX@]?\s*[\d.,]*[\d]?\s*)?', '', temp_string, 1).strip()
+            else:
+                nama = temp_string 
+            
+            nama = re.sub(r'@[0-9.,]+', '', nama).strip() 
+
+        except Exception as e:
+            print(f"Error parsing item string fallback for '{item_string}': {e}. Returning defaults.")
+            nama = item_string.strip()
+            kuantitas = 0
+            harga = 0
+    
+    return {"nama": nama, "kuantitas": kuantitas, "harga": harga}

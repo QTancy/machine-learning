@@ -3,14 +3,14 @@ from typing import List, Optional
 
 
 class QRepItem(BaseModel):
-    name: str
-    qty: int
-    price: int
+    nama: str
+    kuantitas: int
+    harga: int
 
 
 class QRepClassifyRequest(BaseModel):
-    merchant: Optional[str] = ""
-    date: Optional[str] = ""
-    payment_method: Optional[str] = ""
-    report_period: Optional[str] = "bulanan"
-    items: List[QRepItem]
+    toko: Optional[str] = ""
+    tanggal: Optional[str] = ""
+    metode_pembayaran: Optional[str] = ""
+    periode_laporan: Optional[str] = "bulanan"
+    item_list: List[QRepItem]
