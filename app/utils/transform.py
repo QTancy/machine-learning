@@ -1,4 +1,7 @@
 import re
+from datetime import datetime, date
+from dateutil.parser import parse as dateutil_parse 
+
 
 
 def str_to_int(s, locale="US"):
@@ -83,3 +86,22 @@ def parse_item_string_fallback(item_string: str, locale="ID"):
             harga = 0
     
     return {"nama": nama, "kuantitas": kuantitas, "harga": harga}
+
+
+def convert_date_string_to_datetime(date_str: str) -> datetime:
+    """Konversi string tanggal menjadi objek datetime. Sesuaikan format."""
+    if not isinstance(date_str, str) or not date_str.strip():
+        print(f"Error: tanggal bukan string: {date_str}, type: {type(date_str)}. Menggunakan datetime.now().")
+        return datetime.now() # Fallback jika bukan string
+    
+
+    try:
+        # Coba format umum seperti YYYY-MM-DD atau DD-MM-YYYY
+        if re.match(r'\d{4}-\d{2}-\d{2}', date_str):
+            return datetime.strptime(date_str, '%Y-%m-%d')
+        elif re.match(r'\d{2}-\d{2}-\d{4}', date_str):
+            return datetime.strptime(date_str, '%d-%m-%Y')
+        return dateutil_parse(date_str)
+    except (ValueError, TypeError):
+        print(f"Warning: Could not parse date string '{date_str}'. Using current datetime.")
+        return datetime.now()

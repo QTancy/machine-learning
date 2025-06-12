@@ -64,27 +64,30 @@ def postprocess_qcap(qcap_out: dict) -> dict :
     donut_sub_total_dict = qcap_out.get("sub_total", {}) 
 
     
-    sub_total_raw = donut_sub_total_dict.get("subtotal_price", "0") 
+    # sub_total_raw = donut_sub_total_dict.get("subtotal_price", "0") 
     pajak_raw = donut_sub_total_dict.get("tax_price", "0")       
     dll_raw = qcap_out.get("etc", "0") 
 
     total_harga_raw = qcap_out.get("total", {}).get("total_price", "0")
+
     total_harga_int = str_to_int(str(total_harga_raw))
-    sub_total_int = str_to_int(str(sub_total_raw)) 
+    # sub_total_int = str_to_int(str(sub_total_raw)) 
     pajak_int = str_to_int(str(pajak_raw))        
     dll_int = str_to_int(str(dll_raw)) 
-
-    total_harga_dict_for_pydantic = {"total_price": total_harga_int}
+    metode_pembayaran_val = qcap_out.get("metode_pembayaran", "Tidak Diketahui")
+    print(qcap_out.get("metode_pembayaran", "Tidak Diketahui"))
 
     
     final_response_dict = {
         "toko": toko_val,
         "tanggal": tanggal_val,
         "item": processed_menu_items, 
-        "total_harga": total_harga_dict_for_pydantic,
-        "sub_total": sub_total_int,
-        "pajak": pajak_int,
-        "dll": dll_int,
+        "total_harga": total_harga_int,
+        "sub_total": {
+            "pajak": pajak_int,
+            "dll": dll_int,
+        },
+        "metode_pembayaran" : metode_pembayaran_val
     }
 
 

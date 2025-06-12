@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 from typing import List
 
-
 # ------------------ QCAP ------------------
 
 class QCapItem(BaseModel):
@@ -9,29 +8,31 @@ class QCapItem(BaseModel):
     kuantitas: int
     harga: int
 
+class SubTotalDetails(BaseModel):
+    pajak: int
+    dll: int
 
 class QCapResponse(BaseModel):
     toko: str
     tanggal: str
     item: List[QCapItem]
-    total_harga: dict
-    sub_total: int
-    pajak: int
-    dll: int
+    total_harga: int
+    sub_total: SubTotalDetails
+    metode_pembayaran : str
 
 
 # ------------------ QREP REPORT ------------------
 
 class QRepReportItem(BaseModel):
-    item: str
+    nama: str
     kuantitas: int
     harga: int
+    kategori : str
 
 
 class QRepReportResponse(BaseModel):
     toko: str
     tanggal: str
     total_harga: int
-    item_list: List[QRepReportItem]
+    item: List[QRepReportItem]
     metode_pembayaran: str
-    periode_laporan: str

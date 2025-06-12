@@ -4,8 +4,7 @@ import io
 import joblib
 import pandas as pd
 from app.services.qcap import postprocess_qcap
-from app.schemas.request import QRepClassifyRequest
-from app.schemas.response import QRepReportResponse
+from app.schemas.response import QRepReportResponse, QRepReportItem, QCapResponse
 from app.core.config import QREP_PATH_TO_MODEL, LE_PATH_TO_PKL
 import tensorflow as tf
 import joblib
@@ -34,43 +33,56 @@ def classify_items(df: pd.DataFrame, model, le):
     Returns:
         pd.DataFrame: DataFrame dengan kolom 'kategory' ditambahkan.
     """
-    if 'item' in df.columns:
+    if 'nama' in df.columns:
         try:
-            df['kategory'] = df['item'].apply(
+            df['kategori'] = df['nama'].apply(
                 lambda x: le.inverse_transform(
                     [model.predict(tf.constant([x]), verbose=0).argmax()])[0]
             )
         except Exception as e:
             print(f"Kategori error: {e}")
-            df['kategory'] = ""
+            df['kategori'] = ""
     else:
-        df['kategory'] = ""
+        df['kategori'] = ""
 
     return df
 
 
-def classify_qrep(req: QRepClassifyRequest) -> QRepReportResponse:
-    # Ubah QRepClassifyRequest ke dict yang menyerupai hasil QCap
-    fake_qcap_out = {
-        "merchant": req.merchant,
-        "date": req.date,
-        "pembayaran": req.payment_method,
-        "menu": [item.dict() for item in req.items],
-        "total": {
-            "total_price": sum(item.qty * item.price for item in req.items)
-        }
-    }
 
-    df, meta = postprocess_qcap(fake_qcap_out)
+def classify_qrep(qcap_data: QCapResponse) -> QRepReportResponse: 
+    """
+    Menerima data struk yang sudah diekstrak dan dirapikan oleh QCap,
+    lalu melakukan klasifikasi kategori item.
+    """
+    
+    df_items = pd.DataFrame([item.model_dump() for item in qcap_data.item])
 
-    # Klasifikasikan
-    df = classify_items(df, qrep_model, le)
+   
+    if 'nama' not in df_items.columns:
+        
+        print("Warning: 'nama' column not found in DataFrame from QCapResponse items.")
+        df_items['nama'] = '' 
 
+
+    classified_df = classify_items(df_items, qrep_model, le)
+
+  
+    report_item_list = []
+    for index, row in classified_df.iterrows():
+        report_item_list.append(
+            QRepReportItem(
+                nama=row.get('nama', ''),
+                kuantitas=row.get('kuantitas', 0),
+                harga=row.get('harga', 0),
+                kategori=row.get('kategori', '') 
+            ).model_dump()
+        )
+
+    
     return QRepReportResponse(
-        merchant_name=meta["merchant_name"],
-        date=meta["date"],
-        payment_method=meta["payment_method"],
-        report_period=req.report_period,
-        item_list=df.to_dict(orient='records'),
-        total_amount=meta["total_amount"]
+        toko=qcap_data.toko,
+        tanggal=qcap_data.tanggal,
+        total_harga=qcap_data.total_harga,
+        metode_pembayaran=qcap_data.metode_pembayaran, 
+        item=report_item_list,
     )

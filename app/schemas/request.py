@@ -6,11 +6,13 @@ class QRepItem(BaseModel):
     nama: str
     kuantitas: int
     harga: int
+    kategori : str
 
 
 class QRepClassifyRequest(BaseModel):
     toko: Optional[str] = ""
     tanggal: Optional[str] = ""
+    total_harga: Optional[int] = 0
+    item: List[QRepItem]
     metode_pembayaran: Optional[str] = ""
-    periode_laporan: Optional[str] = "bulanan"
-    item_list: List[QRepItem]
+    
