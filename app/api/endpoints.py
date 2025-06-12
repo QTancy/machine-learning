@@ -56,7 +56,7 @@ def qrep_classify_from_qcap(qcap_data: QCapResponse): # <--- Menerima QCapRespon
 # ------------------ QCAP+QREP: PROCESS SEMUANYA (QCAP+QREP) ------------------
 @router.post("/qcap/upload_and_process_all", response_model=QRepReportResponse)
 async def qcap_upload_and_process_all(
-    file: UploadFile = File(...),
+    file: List[UploadFile] = File(...),
     metode_pembayaran: str = Form('Kredit'),
     bahasa : Literal['ID','US'] = Query("US", description="Bahasa untuk identifikasi struk defaultnya (US)"),
     current_user_id: int = Depends(get_current_user_id), 
@@ -68,46 +68,49 @@ async def qcap_upload_and_process_all(
     terkait dengan user yang terautentikasi.
     Mengembalikan laporan QRep akhir.
     """
-    try:
-        image_bytes = await file.read()
-        raw_qcap_output = process_qcap(image_bytes)
-        extracted_data_from_ocr_dict = postprocess_qcap(raw_qcap_output,locale=bahasa)
-        extracted_data_from_ocr_dict['metode_pembayaran'] = metode_pembayaran
+    processed_reports = []
+    for fil in file : 
+        try:
+            image_bytes = await fil.read()
+            raw_qcap_output = process_qcap(image_bytes)
+            extracted_data_from_ocr_dict = postprocess_qcap(raw_qcap_output,locale=bahasa)
+            extracted_data_from_ocr_dict['metode_pembayaran'] = metode_pembayaran
 
-        qcap_data_validated = QCapResponse(**extracted_data_from_ocr_dict)
-        report_response = classify_qrep(qcap_data_validated)
+            qcap_data_validated = QCapResponse(**extracted_data_from_ocr_dict)
+            report_response = classify_qrep(qcap_data_validated)
 
-        
-        classified_items_for_db = []
-        for item_report in report_response.item:
-            classified_items_for_db.append(
-                ClassifiedReceiptItem(
-                    nama=item_report.nama,
-                    kuantitas=item_report.kuantitas,
-                    harga=item_report.harga,
-                    kategori=item_report.kategori
+            
+            classified_items_for_db = []
+            for item_report in report_response.item:
+                classified_items_for_db.append(
+                    ClassifiedReceiptItem(
+                        nama=item_report.nama,
+                        kuantitas=item_report.kuantitas,
+                        harga=item_report.harga,
+                        kategori=item_report.kategori
+                    )
                 )
-            )
 
-        db_data = StrukDatabaseModel(
-            user_id = current_user_id,
-            toko=report_response.toko,
-            tanggal_transaksi=report_response.tanggal, 
-            total_harga=report_response.total_harga,
-            metode_pembayaran=report_response.metode_pembayaran,
-            items=classified_items_for_db, 
-            tanggal_proses=datetime.now(),
-            sub_total_pajak=qcap_data_validated.sub_total.pajak, 
-            sub_total_dll=qcap_data_validated.sub_total.dll      
-        )
-        created_receipt = await create_receipt_with_items(db, current_user_id, db_data)
-        return report_response
-    except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Terjadi kesalahan internal server: {e}")
+            db_data = StrukDatabaseModel(
+                user_id = current_user_id,
+                toko=report_response.toko,
+                tanggal_transaksi=report_response.tanggal, 
+                total_harga=report_response.total_harga,
+                metode_pembayaran=report_response.metode_pembayaran,
+                items=classified_items_for_db, 
+                tanggal_proses=datetime.now(),
+                sub_total_pajak=qcap_data_validated.sub_total.pajak, 
+                sub_total_dll=qcap_data_validated.sub_total.dll      
+            )
+            created_receipt = await create_receipt_with_items(db, current_user_id, db_data)
+            processed_reports.append(report_response)
+        except ValueError as ve:
+            raise HTTPException(status_code=400, detail=str(ve))
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=f"Terjadi kesalahan internal server: {e}")
+    return processed_reports
     
 
 # ------------------ SEMUA DATA STRUK YANG PERNAH DIPROSES ------------------
