@@ -1,17 +1,29 @@
-# Gunakan image Python yang ringan
-FROM python:3.10-slim
+# ----- Tahap Build (Multi-stage Build untuk instalasi dependensi) -----
+FROM python:3.11-slim-buster AS build 
 
-# Buat direktori kerja
 WORKDIR /app
 
-# Salin semua file ke dalam container
+COPY requirements.txt ./
+
+RUN python -m venv /app/.venv && \
+    /app/.venv/bin/pip install --no-cache-dir -r requirements.txt
+
+# ----- Tahap Produksi (Menggunakan image yang lebih kecil untuk runtime) -----
+FROM python:3.11-slim-buster
+
+
+WORKDIR /app
+
+COPY --from=build /app/.venv /app/.venv
+
+
 COPY . .
 
-# Install dependency
-RUN pip install --upgrade pip && pip install -r requirements.txt
+ENV PATH="/app/.venv/bin:$PATH"
 
-# Port default FastAPI
-EXPOSE 8000
+ENV PORT 8080
 
-# Jalankan aplikasi
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE 8080
+
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "$PORT"]

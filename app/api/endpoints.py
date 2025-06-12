@@ -1,10 +1,10 @@
-from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Query
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from datetime import datetime
 
-from typing import List
+from typing import List, Literal
 
 from app.schemas.response import QCapResponse, QRepReportResponse
 from app.schemas.database_models import StrukDatabaseModel, ClassifiedReceiptItem
@@ -57,8 +57,9 @@ def qrep_classify_from_qcap(qcap_data: QCapResponse): # <--- Menerima QCapRespon
 @router.post("/qcap/upload_and_process_all", response_model=QRepReportResponse)
 async def qcap_upload_and_process_all(
     file: UploadFile = File(...),
-    metode_pembayaran: str = Form('Tidak Diketahui'),
-    current_user_id: int = Depends(get_current_user_id), # <--- PASTIKAN INI INT!
+    metode_pembayaran: str = Form('Kredit'),
+    bahasa : Literal['ID','US'] = Query("US", description="Bahasa untuk identifikasi struk defaultnya (US)"),
+    current_user_id: int = Depends(get_current_user_id), 
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -70,7 +71,7 @@ async def qcap_upload_and_process_all(
     try:
         image_bytes = await file.read()
         raw_qcap_output = process_qcap(image_bytes)
-        extracted_data_from_ocr_dict = postprocess_qcap(raw_qcap_output)
+        extracted_data_from_ocr_dict = postprocess_qcap(raw_qcap_output,locale=bahasa)
         extracted_data_from_ocr_dict['metode_pembayaran'] = metode_pembayaran
 
         qcap_data_validated = QCapResponse(**extracted_data_from_ocr_dict)

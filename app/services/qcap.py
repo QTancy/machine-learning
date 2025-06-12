@@ -12,7 +12,7 @@ model = VisionEncoderDecoderModel.from_pretrained(
     "naver-clova-ix/donut-base-finetuned-cord-v2")
 
 
-def postprocess_qcap(qcap_out: dict) -> dict :
+def postprocess_qcap(qcap_out: dict, locale:str) -> dict :
     """
     Konversi output mentah dari QCap menjadi struktur baku untuk klasifikasi QRep.
 
@@ -48,7 +48,7 @@ def postprocess_qcap(qcap_out: dict) -> dict :
             processed_menu_items.append(QCapItem( 
                 nama=item_data.get("nm", ""),
                 kuantitas=int(kuantitas_val) if isinstance(kuantitas_val, int) else extract_int(str(kuantitas_val)),
-                harga=int(harga_val) if isinstance(harga_val, int) else str_to_int(str(harga_val)) 
+                harga=int(harga_val) if isinstance(harga_val, int) else str_to_int(str(harga_val),locale) 
             ).model_dump())
         # Data yang string (biasanya kalau cuman 1 item saja)
         elif isinstance(item_data, str):
@@ -70,14 +70,11 @@ def postprocess_qcap(qcap_out: dict) -> dict :
 
     total_harga_raw = qcap_out.get("total", {}).get("total_price", "0")
 
-    total_harga_int = str_to_int(str(total_harga_raw))
+    total_harga_int = str_to_int(str(total_harga_raw),locale)
     # sub_total_int = str_to_int(str(sub_total_raw)) 
-    pajak_int = str_to_int(str(pajak_raw))        
-    dll_int = str_to_int(str(dll_raw)) 
+    pajak_int = str_to_int(str(pajak_raw),locale)        
+    dll_int = str_to_int(str(dll_raw),locale) 
     metode_pembayaran_val = qcap_out.get("metode_pembayaran", "Tidak Diketahui")
-    print(qcap_out.get("metode_pembayaran", "Tidak Diketahui"))
-
-    
     final_response_dict = {
         "toko": toko_val,
         "tanggal": tanggal_val,
