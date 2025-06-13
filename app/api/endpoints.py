@@ -54,7 +54,7 @@ def qrep_classify_from_qcap(qcap_data: QCapResponse): # <--- Menerima QCapRespon
     return report_response
 
 # ------------------ QCAP+QREP: PROCESS SEMUANYA (QCAP+QREP) ------------------
-@router.post("/qcap/upload_and_process_all", response_model=QRepReportResponse)
+@router.post("/qcap/upload_and_process_all", response_model=List[QRepReportResponse])
 async def qcap_upload_and_process_all(
     file: List[UploadFile] = File(...),
     metode_pembayaran: str = Form('Kredit'),
