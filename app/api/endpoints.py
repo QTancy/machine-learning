@@ -58,7 +58,7 @@ def qrep_classify_from_qcap(qcap_data: QCapResponse): # <--- Menerima QCapRespon
 async def qcap_upload_and_process_all(
     file: List[UploadFile] = File(...),
     metode_pembayaran: str = Form('Kredit'),
-    bahasa : Literal['ID','US'] = Query("US", description="Bahasa untuk identifikasi struk defaultnya (US)"),
+    bahasa : Literal['ID','US'] = Form("US"),
     current_user_id: int = Depends(get_current_user_id), 
     db: AsyncSession = Depends(get_db)
 ):
